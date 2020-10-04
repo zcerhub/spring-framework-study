@@ -1,4 +1,4 @@
-package com.example.myspring;
+package com.example.myspring.v1;
 
 public interface Boy {
 

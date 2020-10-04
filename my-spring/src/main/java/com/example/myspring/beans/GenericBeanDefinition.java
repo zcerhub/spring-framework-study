@@ -1,5 +1,9 @@
 package com.example.myspring.beans;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
+
 public class GenericBeanDefinition implements BeanDefinition{
 
     private Class<?> beanClass;
@@ -8,6 +12,12 @@ public class GenericBeanDefinition implements BeanDefinition{
     private String initMethod;
     private String destroyMethod;
     private String scope = BeanDefinition.SCOPE_SINGLETON;
+//    保存构造参数的实参值
+    private List<?> constructorArgumentValues;
+//    缓存选中的构造函数
+    private Constructor constructor;
+//    缓存取得的工厂方法
+    private Method factoryMethod;
 
     @Override
     public Class<?> getBeanClass() {
@@ -80,14 +90,33 @@ public class GenericBeanDefinition implements BeanDefinition{
     }
 
     @Override
-    public String toString() {
-        return "GenericBeanDefinition{" +
-                "beanClass=" + beanClass +
-                ", factoryMethodName='" + factoryMethodName + '\'' +
-                ", factoryBeanName='" + factoryBeanName + '\'' +
-                ", initMethod='" + initMethod + '\'' +
-                ", destroyMethod='" + destroyMethod + '\'' +
-                ", scope='" + scope + '\'' +
-                '}';
+    public List<?> getConstructorArgumentValues() {
+        return constructorArgumentValues;
     }
+
+    @Override
+    public void setConstructorArgumentValues(List<?> constructorArgumentValues) {
+        this.constructorArgumentValues = constructorArgumentValues;
+    }
+
+    @Override
+    public Constructor getConstructor() {
+        return constructor;
+    }
+
+    @Override
+    public void setConstructor(Constructor constructor) {
+        this.constructor = constructor;
+    }
+
+    @Override
+    public Method getFactoryMethod() {
+        return factoryMethod;
+    }
+
+    @Override
+    public void setFactoryMethod(Method method) {
+        this.factoryMethod = method;
+    }
+
 }

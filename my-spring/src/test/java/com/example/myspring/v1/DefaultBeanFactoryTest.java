@@ -1,4 +1,4 @@
-package com.example.myspring;
+package com.example.myspring.v1;
 
 import com.example.myspring.beans.BeanDefinition;
 import com.example.myspring.beans.DefaultBeanFactory;

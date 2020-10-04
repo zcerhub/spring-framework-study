@@ -1,12 +1,14 @@
 package com.example.myspring.beans;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.Objects;
+import java.security.Provider;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, Closeable {
@@ -39,7 +41,7 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
         return doGetBean(beanName);
     }
 
-    private Object doGetBean(String beanName) throws Exception {
+    public Object doGetBean(String beanName) throws Exception {
         Objects.requireNonNull(beanName, "获取bean时beanName不能为空");
 
 //        先去缓存里面判断一下beanName对应的对象已经创建好了
@@ -55,14 +57,14 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
         if (beanClass != null) {
 //            通过构造函数
             if (beanDefinition.getFactoryMethodName() == null) {
-                bean = createBeanByConstructor(beanClass);
+                bean = createBeanByConstructor(beanDefinition);
             }else{
 //                通过静态工厂方式构建对象
-                bean = createBeanByStaticFactoryMethod(beanClass, beanDefinition.getFactoryMethodName());
+                bean = createBeanByStaticFactoryMethod(beanClass, beanDefinition);
             }
         }else{
 //            成员工厂方式构建对象
-            bean = createBeanByFactoryMethod(beanDefinition.getFactoryBeanName(), beanDefinition.getFactoryMethodName());
+            bean = createBeanByFactoryMethod(beanDefinition);
         }
 
 //        开始bean声明周期
@@ -82,19 +84,160 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
         method.invoke(bean, null);
     }
 
-    private Object createBeanByFactoryMethod(String factoryBeanName, String factoryMethodName) throws Exception {
-        Object factoryBean=beanMap.get(factoryBeanName);
-        Method method=factoryBean.getClass().getMethod(factoryMethodName, null);
-        return method.invoke(factoryBean, null);
+    private Object createBeanByFactoryMethod(BeanDefinition beanDefinition) throws Exception {
+        Object factoryBean=beanMap.get(beanDefinition.getFactoryBeanName());
+        Object[] realArgs = getRealValues(beanDefinition.getConstructorArgumentValues());
+        Method method = determinStaticFactoryMethod(beanDefinition, realArgs,factoryBean.getClass());
+        return method.invoke(factoryBean, realArgs);
     }
 
-    private Object createBeanByStaticFactoryMethod(Class<?> beanClass, String factoryMethodName) throws Exception {
-        Method method =beanClass.getMethod(factoryMethodName, null);
-        return method.invoke(beanClass, null);
+
+    private Object createBeanByStaticFactoryMethod(Class<?> beanClass, BeanDefinition bd) throws Exception {
+        Class<?> type=bd.getBeanClass();
+        Object[] realArgs = getRealValues(bd.getConstructorArgumentValues());
+        Method method = determinStaticFactoryMethod(bd, realArgs, type);
+        return method.invoke(beanClass, realArgs);
     }
 
-    private Object createBeanByConstructor(Class<?> beanClass) throws Exception {
-        return beanClass.newInstance();
+    private Method determinStaticFactoryMethod(BeanDefinition bd, Object[] realArgs, Class<?> type) throws Exception {
+        if (type == null) {
+            type = bd.getBeanClass();
+        }
+        String methodName = bd.getFactoryMethodName();
+        if (realArgs == null) {
+            return type.getMethod(methodName, null);
+        }
+//        对应原型bean，从第二次开始获取bean实例时可直接获得对此缓存的构造方法
+        Method factoryMethod = bd.getFactoryMethod();
+        if (factoryMethod != null) {
+            return factoryMethod;
+        }
+//      根据参数类型获取精确匹配的方法
+        Class[] paramTypeFactoryMethod=new Class[realArgs.length];
+        for (int i = 0; i < realArgs.length; i++) {
+            paramTypeFactoryMethod[i] = realArgs[i].getClass();
+        }
+        try {
+            factoryMethod = type.getMethod(bd.getFactoryMethodName(), paramTypeFactoryMethod);
+        } catch (NoSuchMethodException e) {
+            factoryMethod=null;
+        }
+        if (factoryMethod == null) {
+//            遍历所有的工厂方法
+            Method[] candidateMethods = bd.getBeanClass().getMethods();
+        outer:  for (Method cadidateMethod : candidateMethods) {
+//                先判断个数是否符合，
+                Class<?>[] paramTypeFactoryMethods = cadidateMethod.getParameterTypes();
+                if (paramTypeFactoryMethods.length != realArgs.length) {
+                    continue outer;
+                }
+            for (int i = 0; i < realArgs.length; i++) {
+                if (!paramTypeFactoryMethods[i].isAssignableFrom(realArgs[i].getClass())) {
+                    continue outer;
+                }
+            }
+            factoryMethod = cadidateMethod;
+            break outer;
+            }
+        }
+        if (factoryMethod != null) {
+            if (bd.isPrototype()) {
+//                将获取到的工厂方法放入到缓存中
+                bd.setFactoryMethod(factoryMethod);
+            }
+        }
+        return factoryMethod;
+    }
+
+    private Object createBeanByConstructor(BeanDefinition beanDefinition) throws Exception {
+        Object instance = null;
+        if (CollectionUtils.isEmpty(beanDefinition.getConstructorArgumentValues())) {
+            instance=beanDefinition.getBeanClass().newInstance();
+        }else{
+            Object[] args = getConstructorArgumentValues(beanDefinition);
+            if (args == null) {
+                instance = beanDefinition.getBeanClass().newInstance();
+            }else{
+                instance = determinConstructor(beanDefinition, args).newInstance(args);
+            }
+        }
+        return instance;
+    }
+
+    private Constructor determinConstructor(BeanDefinition beanDefinition, Object[] args) throws Exception {
+        if (args == null) {
+            return beanDefinition.getBeanClass().getConstructor(null);
+        }
+//        对于原型Bean，从第二次开始获取Bean实例时，可以直接从第一次缓存中获取构造方法
+        Constructor constructor = beanDefinition.getConstructor();
+
+//        获取参数的类型
+        Class[] paramTypes = new Class[args.length];
+        for (int i = 0; i < args.length; i++) {
+            paramTypes[i] = args[i].getClass();
+        }
+        constructor = beanDefinition.getBeanClass().getConstructor(paramTypes);
+
+//        如果不能直接匹配，则遍历所有的构造函数进行匹配
+        if (constructor == null) {
+            Constructor[] constructors = beanDefinition.getBeanClass().getConstructors();
+//            判断逻辑，先通过参数个数进行匹配，然后再通过参数类型进行匹配
+            outer:    for (Constructor ct : constructors) {
+                Class[] paramterTypesConstrutor = ct.getParameterTypes();
+//                参数个数不一样，跳过
+                if (paramterTypesConstrutor.length != args.length) {
+                    continue;
+                }
+                for (int i = 0; i < args.length; i++) {
+                    if (!paramterTypesConstrutor[i].isAssignableFrom(args[i].getClass())) {
+                        continue outer;
+                    }
+                }
+                constructor=ct;
+            }
+        }
+
+        if (constructor != null) {
+            if (!beanDefinition.isSingleton()) {
+                beanDefinition.setConstructor(constructor);
+            }
+        }else{
+            throw new Exception("抱歉，找不到对应的构造函数");
+        }
+        return constructor;
+    }
+
+    private Object[] getConstructorArgumentValues(BeanDefinition beanDefinition) throws Exception {
+        List<?> args = beanDefinition.getConstructorArgumentValues();
+        return getRealValues(args);
+    }
+
+    private Object[] getRealValues(List<?> args) throws Exception {
+        if (CollectionUtils.isEmpty(args)) {
+            return null;
+        }
+        Object v=null;
+        Object[] values = new Object[args.size()];
+        for (int i = 0; i < values.length; i++) {
+            Object rv = args.get(i);
+            if (rv == null) {
+                v=rv;
+            } else if (rv instanceof BeanReference) {
+                v = doGetBean( ((BeanReference) rv).getBeanName());
+            } else if (rv instanceof Collection) {
+//                TODO 处理集合中的BeanReference
+            }else if (rv instanceof Properties) {
+//                TODO 处理Properties中的BeanReference
+            }else if (rv instanceof Map) {
+//                TODO 处理Map中的BeanReference
+            }else if (rv instanceof Object[]) {
+//                TODO 处理Object[]中的BeanReference
+            }else {
+                v=rv;
+            }
+            values[i]=v;
+        }
+        return values;
     }
 
 

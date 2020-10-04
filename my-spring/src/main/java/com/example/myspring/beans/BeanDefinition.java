@@ -3,6 +3,10 @@ package com.example.myspring.beans;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
+
 /*
 * Bean定义，用来指定Bean构建信息接口
 * */
@@ -47,8 +51,20 @@ public interface BeanDefinition {
                 return false;
             }
         }
-
         return true;
     }
 
+    /*
+     * 构造函数的参数
+     * */
+    List<?> getConstructorArgumentValues();
+
+    void setConstructorArgumentValues(List<?> constructorArgumentValues);
+
+    Constructor getConstructor();
+
+    void setConstructor(Constructor constructor);
+
+    Method getFactoryMethod();
+    void setFactoryMethod(Method method);
 }
