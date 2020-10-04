@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.Provider;
 import java.util.*;
@@ -72,12 +73,47 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
             invokeInitMethod(bean, beanDefinition);
         }
 
+//        完成属性注入
+        setPropertyValueDIValues(beanDefinition, bean);
+
 //        对单例bean的处理
         if (beanDefinition.isSingleton()) {
             beanMap.put(beanName, bean);
         }
         return bean;
     }
+
+    private void setPropertyValueDIValues(BeanDefinition beanDefinition, Object bean) throws Exception {
+        if (CollectionUtils.isEmpty(beanDefinition.getPropertyValues())) {
+            return;
+        }
+        for (PropertyValue pv : beanDefinition.getPropertyValues()) {
+            if (StringUtils.isBlank(pv.getName())) {
+                continue;
+            }
+            Field field=bean.getClass().getDeclaredField(pv.getName());
+            field.setAccessible(true);
+            Object rv = pv.getValue();
+            Object v=null;
+            if (rv == null) {
+                v=null;
+            } else if (rv instanceof BeanReference) {
+                v = doGetBean(((BeanReference) rv).getBeanName());
+            } else if (rv instanceof Object[]) {
+                // TODO 处理集合中的bean引用
+            } else if (rv instanceof Collection) {
+                // TODO 处理集合中的bean引用
+            } else if (rv instanceof Properties) {
+                // TODO 处理properties中的bean引用
+            } else if (rv instanceof Map) {
+                // TODO 处理Map中的bean引用
+            } else {
+                v = rv;
+            }
+            field.set(bean,v);
+        }
+    }
+
 
     private void invokeInitMethod(Object bean, BeanDefinition beanDefinition) throws Exception {
         Method method=bean.getClass().getMethod(beanDefinition.getInitMethod(), null);

@@ -83,5 +83,24 @@ public class DITest {
         boy.sayLove();
     }
 
+    @Test
+    public void testChildTypeDI() throws Exception {
+        GenericBeanDefinition niulnagBd = new GenericBeanDefinition();
+        niulnagBd.setBeanClass(Lad.class);
+        List<Object> args = new ArrayList<>();
+        args.add("niulang");
+        args.add(new BeanReference("zhinv"));
+        niulnagBd.setConstructorArgumentValues(args);
+        bf.registryBeanDefinition("niulang", niulnagBd);
+
+        GenericBeanDefinition zhinvBd = new GenericBeanDefinition();
+        zhinvBd.setBeanClass(MagicGirl.class);
+        bf.registryBeanDefinition("zhinv", zhinvBd);
+
+        bf.preInstantiateSingletons();
+
+        Lad niulang = (Lad) bf.getBean("niulang");
+        niulang.sayLove();
+    }
 
 }

@@ -67,4 +67,11 @@ public interface BeanDefinition {
 
     Method getFactoryMethod();
     void setFactoryMethod(Method method);
+
+    /*
+     * 属性依赖
+     * */
+    List<PropertyValue> getPropertyValues();
+
+    void setPropertyValues(List<PropertyValue> propertyValues);
 }

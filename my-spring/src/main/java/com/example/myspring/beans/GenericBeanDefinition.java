@@ -18,6 +18,8 @@ public class GenericBeanDefinition implements BeanDefinition{
     private Constructor constructor;
 //    缓存取得的工厂方法
     private Method factoryMethod;
+//  保存属性值
+    private List<PropertyValue> propertyValues;
 
     @Override
     public Class<?> getBeanClass() {
@@ -117,6 +119,16 @@ public class GenericBeanDefinition implements BeanDefinition{
     @Override
     public void setFactoryMethod(Method method) {
         this.factoryMethod = method;
+    }
+
+    @Override
+    public List<PropertyValue> getPropertyValues() {
+        return propertyValues;
+    }
+
+    @Override
+    public void setPropertyValues(List<PropertyValue> propertyValues) {
+        this.propertyValues = propertyValues;
     }
 
 }
