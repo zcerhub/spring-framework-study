@@ -16,6 +16,7 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
 
     private Map<String, BeanDefinition> bdMap = new ConcurrentHashMap<>();
     private Map<String, Object> beanMap = new ConcurrentHashMap<>();
+    private Set<String> currentCreateBean = new HashSet<>();
 
     @Override
     public void registryBeanDefinition(String beanName, BeanDefinition beanDefinition) throws BeanDefinitionRegisterException {
@@ -51,6 +52,10 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
             return bean;
         }
 
+        Set<String> ingBeans=currentCreateBean;
+        if (!currentCreateBean.add(beanName)) {
+            throw new RuntimeException(beanName+"抱歉，该bean正在创建过程中:"+ingBeans);
+        }
 //        构建的方式有三种：构造函数、静态工厂、成员工厂
         BeanDefinition beanDefinition = bdMap.get(beanName);
         Objects.requireNonNull(beanDefinition, "找不到【" + beanName + "】的bean定义信息");
@@ -68,13 +73,16 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry,BeanFactory, C
             bean = createBeanByFactoryMethod(beanDefinition);
         }
 
+        //        完成属性注入
+        setPropertyValueDIValues(beanDefinition, bean);
 //        开始bean声明周期
         if (StringUtils.isNotBlank(beanDefinition.getInitMethod())) {
             invokeInitMethod(bean, beanDefinition);
         }
 
-//        完成属性注入
-        setPropertyValueDIValues(beanDefinition, bean);
+
+//        创建完毕后从set中删除该beanName
+        currentCreateBean.remove(beanName);
 
 //        对单例bean的处理
         if (beanDefinition.isSingleton()) {

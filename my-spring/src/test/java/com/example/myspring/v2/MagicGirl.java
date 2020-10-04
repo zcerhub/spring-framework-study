@@ -9,6 +9,11 @@ public class MagicGirl implements Girl {
     public MagicGirl() {
     }
 
+    public MagicGirl(String name, Boy friend) {
+        this.name = name;
+        this.friend = friend;
+    }
+
     public MagicGirl(String name) {
         this.name = name;
     }
