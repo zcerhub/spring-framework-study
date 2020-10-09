@@ -13,6 +13,6 @@ public interface MethodBeforeAdvice extends  Advice{
      * args：方法执行参数
      * target：执行方法的目标对象
      * */
-    void afterReturing(Object returnValue, Method method, Object[] args, Object target);
+    void before( Method method, Object[] args, Object target);
 
 }

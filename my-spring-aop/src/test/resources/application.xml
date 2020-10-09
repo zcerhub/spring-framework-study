@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="goodGril" class="com.example.myspring.v4.MagicGril"
+    	init-method="start" destroy-method="end">
+    	<constructor-arg type="java.lang.String" value="goodGril" />
+    	<property name="friend" ref="goodBoy" />
+    </bean>
+	
+	<!--<bean class="v2.di.BoyFactory" factory-method="" factory-bean="" id="" scope="" />-->
+
+    <bean id="goodBoy" class="com.example.myspring.v4.Lad">
+    	<constructor-arg type="java.lang.String" value="goodBoy" />
+		<constructor-arg type="com.example.myspring.v4.MagicGril" ref="goodGril" />
+    </bean>
+</beans>
+	
+	
+	

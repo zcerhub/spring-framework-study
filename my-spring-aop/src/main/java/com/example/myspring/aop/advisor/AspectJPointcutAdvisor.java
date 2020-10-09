@@ -7,7 +7,7 @@ package com.example.myspring.aop.advisor;
 import com.example.myspring.aop.pointcut.AspectJExpressionPointcut;
 import com.example.myspring.aop.pointcut.Pointcut;
 
-public class AspectJPointcutAdvisor implements PointcutAdvisort{
+public class AspectJPointcutAdvisor implements PointcutAdvisor{
 
 //    通知bean名称
     private String adviceBeanName;

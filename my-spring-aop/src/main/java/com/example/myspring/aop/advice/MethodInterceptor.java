@@ -13,6 +13,6 @@ public interface MethodInterceptor  extends  Advice{
      * args：方法执行参数
      * target：执行方法的目标对象
      * */
-    Object afterReturing(Object returnValue, Method method, Object[] args, Object target) throws Throwable;
+    Object invoke(Method method, Object[] args, Object target) throws Throwable;
 
 }
